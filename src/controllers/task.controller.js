@@ -1,6 +1,11 @@
-const TaskModel = require("../models/task.model");
-const { notFoundError } = require("../errors/mongodb.errors");
+const { createClient } = require('@supabase/supabase-js');
+const { notFoundError } = require("../errors/supabase.errors");
 const { notAllowedFieldsToUpdateError } = require("../errors/general.errors");
+
+// Configuração do cliente do Supabase
+const supabaseUrl = 'https://udxkhssnnpjdmvidjcdu.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkeGtoc3NubnBqZG12aWRqY2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjczMDg3ODQsImV4cCI6MjA0Mjg4NDc4NH0.Pwc8Zk-0CzeWfcQobsPpriS6aVgTf8QZ0ZeT-09qgHI';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 class TaskController {
   constructor(req, res) {
@@ -10,8 +15,13 @@ class TaskController {
 
   async getAll() {
     try {
-      const dados = await TaskModel.find({});
-      this.res.status(200).send(dados);
+      const { data, error } = await supabase
+        .from('tasks') // Nome da tabela no Supabase
+        .select('*');
+
+      if (error) throw new Error(error.message);
+
+      this.res.status(200).send(data);
     } catch (error) {
       this.res.status(500).send(error.message);
     }
@@ -21,13 +31,17 @@ class TaskController {
     try {
       const taskId = this.req.params.id;
 
-      const task = await TaskModel.findById(taskId);
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId) // Busca pelo ID
 
-      if (!task) {
+      if (error) throw new Error(error.message);
+      if (!data.length) {
         return notFoundError(this.res);
       }
 
-      return this.res.status(200).send(task);
+      return this.res.status(200).send(data[0]);
     } catch (error) {
       this.res.status(500).send(error.message);
     }
@@ -38,9 +52,13 @@ class TaskController {
       const taskId = this.req.params.id;
       const TaskData = this.req.body;
 
-      const TaskToUpdate = await TaskModel.findById(taskId);
+      const { data: task, error: findError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId);
 
-      if (!TaskToUpdate) {
+      if (findError) throw new Error(findError.message);
+      if (!task.length) {
         return notFoundError(this.res);
       }
 
@@ -48,25 +66,36 @@ class TaskController {
       const requestUpdates = Object.keys(TaskData);
 
       for (const update of requestUpdates) {
-        if (allowedUpdates.includes(update)) {
-          TaskToUpdate[update] = TaskData[update];
-        } else {
+        if (!allowedUpdates.includes(update)) {
           return notAllowedFieldsToUpdateError(this.res);
         }
       }
 
-      await TaskToUpdate.save();
-      return this.res.status(200).send(TaskToUpdate);
+      // Atualiza a tarefa no Supabase
+      const { data, error } = await supabase
+        .from('tasks')
+        .update(TaskData)
+        .eq('id', taskId);
+
+      if (error) throw new Error(error.message);
+
+      return this.res.status(200).send(data[0]);
     } catch (error) {
-      return this.res.status(500).send(error.message);
+      this.res.status(500).send(error.message);
     }
   }
 
   async create() {
     try {
-      const newTask = new TaskModel(this.req.body);
-      await newTask.save();
-      this.res.status(201).send(newTask);
+      const newTaskData = this.req.body;
+
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([newTaskData]);
+
+      if (error) throw new Error(error.message);
+
+      this.res.status(201).send(data[0]);
     } catch (error) {
       this.res.status(500).send(error.message);
     }
@@ -76,15 +105,24 @@ class TaskController {
     try {
       const taskId = this.req.params.id;
 
-      const taskToDelete = await TaskModel.findById(taskId);
+      const { data: task, error: findError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('id', taskId);
 
-      if (!taskToDelete) {
+      if (findError) throw new Error(findError.message);
+      if (!task.length) {
         return notFoundError(this.res);
       }
 
-      const deletedTask = await TaskModel.findByIdAndDelete(taskId);
+      const { data, error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
 
-      this.res.status(200).send(deletedTask);
+      if (error) throw new Error(error.message);
+
+      this.res.status(200).send(data[0]);
     } catch (error) {
       this.res.status(500).send(error.message);
     }
