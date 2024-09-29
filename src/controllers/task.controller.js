@@ -1,6 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const { notFoundError } = require("../errors/supabase.errors");
-const { notAllowedFieldsToUpdateError } = require("../errors/general.errors");
 
 // Configuração do cliente do Supabase
 const supabaseUrl = 'https://udxkhssnnpjdmvidjcdu.supabase.co';
@@ -34,11 +32,11 @@ class TaskController {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .eq('id', taskId) // Busca pelo ID
+        .eq('id', taskId); // Busca pelo ID
 
       if (error) throw new Error(error.message);
       if (!data.length) {
-        return notFoundError(this.res);
+        return this.res.status(404).send({ message: 'Task not found' });
       }
 
       return this.res.status(200).send(data[0]);
@@ -59,7 +57,7 @@ class TaskController {
 
       if (findError) throw new Error(findError.message);
       if (!task.length) {
-        return notFoundError(this.res);
+        return this.res.status(404).send({ message: 'Task not found' });
       }
 
       const allowedUpdates = ["isCompleted"];
@@ -67,7 +65,7 @@ class TaskController {
 
       for (const update of requestUpdates) {
         if (!allowedUpdates.includes(update)) {
-          return notAllowedFieldsToUpdateError(this.res);
+          return this.res.status(400).send({ message: 'Not allowed fields to update' });
         }
       }
 
@@ -112,7 +110,7 @@ class TaskController {
 
       if (findError) throw new Error(findError.message);
       if (!task.length) {
-        return notFoundError(this.res);
+        return this.res.status(404).send({ message: 'Task not found' });
       }
 
       const { data, error } = await supabase
@@ -130,3 +128,4 @@ class TaskController {
 }
 
 module.exports = TaskController;
+
