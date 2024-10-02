@@ -2,9 +2,10 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 
+// Importa as rotas
 const TaskRouter = require("./src/routes/task.routes");
 
-// Carrega as variáveis de ambiente
+// Carrega as variáveis de ambiente do arquivo .env
 dotenv.config();
 
 const app = express();
@@ -20,4 +21,6 @@ app.use("/tasks", TaskRouter);
 const port = process.env.PORT || 8000;
 
 // Inicializa o servidor
-app.listen(port, () => console.log(`Listening on port ${port} !`));
+app.listen(port, () => {
+  console.log(`Servidor rodando na porta ${port}!`);
+});
